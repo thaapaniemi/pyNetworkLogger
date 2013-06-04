@@ -6,6 +6,7 @@ import urllib2
 from ConfigParser import SafeConfigParser
 import daemon
 import runner #local hacked up DaemonRunner
+import socket
 
 from speedtest import Speedtest
 from random import choice
@@ -104,20 +105,18 @@ class NetworkStatusLogger():
 	
 	def getSpeeds(self, speedtest):
 		try:
-			results = []
+			results = {'ping':-1, 'download':-1, 'upload':-1, 'server':"-1"}
 			servers = ["auto", "random"]
 			for url in servers:
 				if url == "auto":
-					url = speedtest.setNearestserver()
-					print "url: " + str(url)
+					speedtest.setNearestserver()
 				elif url == "random":
-					url = speedtest.setRandomServer("FI")
+					speedtest.setRandomServer("FI")
 				else:
-					url = speedtest.setServer(host)
+					speedtest.setServer(host)
 				
-				print url
-				results = self._getSpeed( speedtest)
-		except urllib2.URLError as e:
+				results = self._getSpeed(speedtest)
+		except (urllib2.URLError, socket.error, socket.gaierror) as e:
 			self._logger.error('getSpeeds() exception: ' + str(e))
 		return results
 	

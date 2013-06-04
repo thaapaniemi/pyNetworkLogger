@@ -178,13 +178,51 @@ if __name__ == "__main__":
 	executionInfo = None # This is for re-throwed exceptions with full traceback
 	logger = None
 	
+	nlOptions = {}
+	
 	try:
 		#Parser controls
 		parser = argparse.ArgumentParser("./networkLogger.py")
+		parser.add_argument('-c', nargs=1, help="Load alternative config file")
 		parser.add_argument('-d', nargs=1, help="Daemon controls [start|stop|restart]")
+		
+		parser.add_argument('-s', nargs=2, help="Set sleepTime and Speedtest multiplier")
+		parser.add_argument('-iss', nargs='+', help="Set InternetStatus server(s)")
+		parser.add_argument('-sts', nargs='+', help="Set Speedtest server(s)")
+		
 		args = parser.parse_args()
+		
+		if args.s is not None:
+			nlOptions['sleepTime'] = args.s[0]
+			nlOptions['stMultiplier'] = args.s[1]
 			
-		if(args.d is None):
+		if args.iss is not None:
+			nlOptions['internetStatusServers'] = args.iss
+		
+		if args.sts is not None:
+			nlOptions['internetSpeedtestServers'] = args.sts
+			
+		
+		configParser = SafeConfigParser()
+		configFile = 'config'
+		if args.c is not None:
+			configFile = args.c
+		
+		configParser.read(configFile)
+		if 'sleepTime' not in nlOptions:
+			nlOptions['sleepTime'] = int(configParser.get('Main','SleepTime'))
+		if 'stMultiplier' not in nlOptions:
+			nlOptions['stMultiplier'] = configParser.getint('Main','Multiplier')
+		if 'internetStatusServers' not in nlOptions:
+			nlOptions['internetStatusServers'] = configParser.get('InternetStatus','Servers').split()
+		if 'internetSpeedtestServers' not in nlOptions:
+			nlOptions['internetSpeedtestServers'] = configParser.get('Speedtest','Servers').split()
+		
+		#Add DB settings
+		
+		print nlOptions
+
+		if args.d is None:
 			networkStatusLogger = NetworkStatusLogger()
 			networkStatusLogger.run()
 		else:

@@ -1,0 +1,30 @@
+[Main]
+#Time between internet connection status checks
+SleepTime = 300
+
+#How many status checks before Speedtest
+Multiplier = 6
+
+[InternetStatus]
+Servers = 192.168.10.1
+
+[Speedtest]
+#Speedtest servers, auto for nearest, random for random
+Servers = auto random
+
+#Country Code for random (Optional)
+CC = FI
+
+[Database]
+#DB engine, only mysql tested.
+engine = mysql
+
+
+#DB-related settings
+[mysql]
+server = localhost
+database = my_database
+username = database_user
+password = top_secret
+
+

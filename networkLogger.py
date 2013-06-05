@@ -11,6 +11,15 @@ import socket
 from speedtest import Speedtest
 from random import choice
 
+try:
+	import pymysql as mysql
+except ImportError:
+	try:
+		import MySQLdb as mysql
+	except ImportError:
+		mysql = None
+
+	
 from peewee import *
 mysql_database = MySQLDatabase('my_database', **{'passwd': 'top_secret', 'user': 'database_user'})
 
@@ -51,34 +60,41 @@ class NetworkStatusLogger():
 		self._logger = logger
 		
 	def dbAddStatus(self,okTime=600):
-		timeNow = int(time.time())
-		doNew = False
-		ns2Object = None
-		
-		if self._ns2row is not None:
-			if self._ns2row.status == self._currentStatus:
-				self._ns2row.timestamp_last = timeNow
-				self._ns2row.save()
+		try:
+			timeNow = int(time.time())
+			doNew = False
+			ns2Object = None
+			
+			if self._ns2row is not None:
+				if self._ns2row.status == self._currentStatus:
+					self._ns2row.timestamp_last = timeNow
+					self._ns2row.save()
+				else:
+					doNew = True
 			else:
 				doNew = True
-		else:
-			doNew = True
+			
+			if doNew:
+				self._ns2row = NetworkStatus2.create(status=self._currentStatus, timestamp_first=int(timeNow), timestamp_last=int(timeNow))
+			
+			self._currentStatus = None
 		
-		if doNew:
-			self._ns2row = NetworkStatus2.create(status=self._currentStatus, timestamp_first=int(timeNow), timestamp_last=int(timeNow))
-		
-		self._currentStatus = None
+		except mysql.DatabaseError as e:
+			self._logger.error('dbAddStatus() exception: ' + str(e))
 
 	
 	def dbAddSpeed(self, internetSpeed):
-		print internetSpeed
-		dbSpeed = NetworkSpeed2()
-		dbSpeed.timestamp = int(time.time())
-		dbSpeed.server = internetSpeed['server']
-		dbSpeed.ping = internetSpeed['ping']
-		dbSpeed.download = internetSpeed['download']
-		dbSpeed.upload = internetSpeed['upload']
-		dbSpeed.save()
+		try:
+			print internetSpeed
+			dbSpeed = NetworkSpeed2()
+			dbSpeed.timestamp = int(time.time())
+			dbSpeed.server = internetSpeed['server']
+			dbSpeed.ping = internetSpeed['ping']
+			dbSpeed.download = internetSpeed['download']
+			dbSpeed.upload = internetSpeed['upload']
+			dbSpeed.save()
+		except mysql.DatabaseError as e:
+			self._logger.error('dbAddSpeed() exception: ' + str(e))
 
 	# Determine if Internet connection is working by xxx servers loaded from config
 	# (DNS translation can take more time than timeout, that's why we are using IP address)
@@ -220,7 +236,7 @@ if __name__ == "__main__":
 		
 		#Add DB settings
 		
-		print nlOptions
+		#print nlOptions
 
 		if args.d is None:
 			networkStatusLogger = NetworkStatusLogger()

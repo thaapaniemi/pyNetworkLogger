@@ -58,99 +58,107 @@ class Speedtest:
 		
 	# Test download speed, returns speed in bps
 	def download(self):
-		if self._host is None:
-			self._host = self.chooseserver()
-	
-		total_downloaded = 0
-		connections = []
-		for run in range(self._runs):
-			connection = httplib.HTTPConnection(self._host)
-			connection.set_debuglevel(self._httpdebug)
-			connection.connect()
-			connections.append(connection)
-		total_start_time = time()
-		for current_file in self._download_files:
-			threads = []
+		try:
+			if self._host is None:
+				self._host = self.chooseserver()
+		
+			total_downloaded = 0
+			connections = []
 			for run in range(self._runs):
-				thread = Thread(target = self._downloadthread, args = (connections[run], current_file + '?x=' + str(int(time() * 1000))))
-				thread.run_number = run
-				thread.start()
-				threads.append(thread)
-			for thread in threads:
-				thread.join()
-				total_downloaded += thread.downloaded
-				#self._printv('Run %d for %s finished' % (thread.run_number, current_file))
-		total_ms = (time() - total_start_time) * 1000
-		for connection in connections:
-			connection.close()
-		#self._printv('Took %d ms to download %d bytes' % (total_ms, total_downloaded))
-		return (total_downloaded * 8000 / total_ms)
+				connection = httplib.HTTPConnection(self._host)
+				connection.set_debuglevel(self._httpdebug)
+				connection.connect()
+				connections.append(connection)
+			total_start_time = time()
+			for current_file in self._download_files:
+				threads = []
+				for run in range(self._runs):
+					thread = Thread(target = self._downloadthread, args = (connections[run], current_file + '?x=' + str(int(time() * 1000))))
+					thread.run_number = run
+					thread.start()
+					threads.append(thread)
+				for thread in threads:
+					thread.join()
+					total_downloaded += thread.downloaded
+					#self._printv('Run %d for %s finished' % (thread.run_number, current_file))
+			total_ms = (time() - total_start_time) * 1000
+			for connection in connections:
+				connection.close()
+			#self._printv('Took %d ms to download %d bytes' % (total_ms, total_downloaded))
+			return (total_downloaded * 8000 / total_ms)
+		except Exception as e:
+			raise SpeedtestError(e)
 	
 	# Test upload speed, returns speed in bps
 	def upload(self):
-		if self._host is None:
-			raise SpeedtestError('Host not set.')
+		try:
+			if self._host is None:
+				raise SpeedtestError('Host not set.')
 			
-		connections = []
-		for run in range(self._runs):
-			connection = httplib.HTTPConnection(self._host)
-			connection.set_debuglevel(self._httpdebug)
-			connection.connect()
-			connections.append(connection)
-			
-		post_data = []
-		ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		for current_file_size in self._upload_files:
-			values = {'content0' : ''.join(random.choice(ALPHABET) for i in range(current_file_size)) }
-			post_data.append(urllib.urlencode(values))
-			
-		total_uploaded = 0
-		total_start_time = time()
-		for data in post_data:
-			threads = []
+			connections = []
 			for run in range(self._runs):
-				thread = Thread(target = self._uploadthread, args = (connections[run], data))
-				thread.run_number = run
-				thread.start()
-				threads.append(thread)
-			for thread in threads:
-				thread.join()
-				#self._printv('Run %d for %d bytes finished' % (thread.run_number, thread.uploaded))
-				total_uploaded += thread.uploaded
-		total_ms = (time() - total_start_time) * 1000
-		for connection in connections:
-			connection.close()
-		#self._printv('Took %d ms to upload %d bytes' % (total_ms, total_uploaded))
-		return (total_uploaded * 8000 / total_ms)
+				connection = httplib.HTTPConnection(self._host)
+				connection.set_debuglevel(self._httpdebug)
+				connection.connect()
+				connections.append(connection)
+				
+			post_data = []
+			ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+			for current_file_size in self._upload_files:
+				values = {'content0' : ''.join(random.choice(ALPHABET) for i in range(current_file_size)) }
+				post_data.append(urllib.urlencode(values))
+				
+			total_uploaded = 0
+			total_start_time = time()
+			for data in post_data:
+				threads = []
+				for run in range(self._runs):
+					thread = Thread(target = self._uploadthread, args = (connections[run], data))
+					thread.run_number = run
+					thread.start()
+					threads.append(thread)
+				for thread in threads:
+					thread.join()
+					#self._printv('Run %d for %d bytes finished' % (thread.run_number, thread.uploaded))
+					total_uploaded += thread.uploaded
+			total_ms = (time() - total_start_time) * 1000
+			for connection in connections:
+				connection.close()
+			#self._printv('Took %d ms to upload %d bytes' % (total_ms, total_uploaded))
+			return (total_uploaded * 8000 / total_ms)
+		except Exception as e:
+			raise SpeedtestError(e)
 	
 	#Test ping time, returns response time in ms
 	def ping(self,host=None, tries=5):
-		
-		#Set pinging to selected server if not specified
-		if host is None:
-			if self._host is None:
-				raise SpeedtestError('Host not set.')
-			host = self._host
-			
-		connection = httplib.HTTPConnection(host)
-		connection.set_debuglevel(self._httpdebug)
-		connection.connect()
-		times = []
-		worst = 0
-		for i in range(tries):
-			total_start_time = time()
-			connection.request('GET', '/speedtest/latency.txt?x=' + str(random.random()), None, { 'Connection': 'Keep-Alive'})
-			response = connection.getresponse()
-			response.read()
-			total_ms = time() - total_start_time
-			times.append(total_ms)
-			if total_ms > worst:
-				worst = total_ms
-		times.remove(worst)
-		total_ms = sum(times) * 250 # * 1000 / number of tries (4) = 250
-		connection.close()
-		#self._printv('Latency for %s - %d' % (host, total_ms))
-		return total_ms
+		try:
+			#Set pinging to selected server if not specified
+			if host is None:
+				if self._host is None:
+					raise SpeedtestError('Host not set.')
+				host = self._host
+				
+			connection = httplib.HTTPConnection(host)
+			connection.set_debuglevel(self._httpdebug)
+			connection.connect()
+			times = []
+			worst = 0
+			for i in range(tries):
+				total_start_time = time()
+				connection.request('GET', '/speedtest/latency.txt?x=' + str(random.random()), None, { 'Connection': 'Keep-Alive'})
+				response = connection.getresponse()
+				response.read()
+				total_ms = time() - total_start_time
+				times.append(total_ms)
+				if total_ms > worst:
+					worst = total_ms
+			times.remove(worst)
+			total_ms = sum(times) * 250 # * 1000 / number of tries (4) = 250
+			connection.close()
+			#self._printv('Latency for %s - %d' % (host, total_ms))
+			return total_ms
+		except Exception as e:
+			raise SpeedtestError(e)
 	
 	# Automatically selects best server, returns server address
 	def _setNearestServer(self):

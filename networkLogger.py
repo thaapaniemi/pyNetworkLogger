@@ -45,21 +45,47 @@ class NetworkSpeed2(Model):
 		database = mysql_database
 
 class NetworkStatusLogger():
-
+	
+	_options = None
 	_logger = None
 	_currentStatus = None
 	_ns2row = None
 
-	def __init__(self, logger=None):
+	def __init__(self, logger=None, options={}):
 		self.stdin_path = '/dev/null'
 		self.stdout_path = '/dev/tty'
 		self.stderr_path = '/dev/tty'
 		self.pidfile_path =  '/var/run/networkStatusLogger2.pid'
 		self.pidfile_timeout = 5
-		
 		self._logger = logger
 		
-	def dbAddStatus(self,okTime=600):
+		self._loadOptions(options)
+	
+	def _loadOptions(self, options={}):
+		#Every option key
+		optionKeys = ('sleepTime', 'stMultiplier', 'internetStatusServers', 'internetSpeedtestServers', 'countryCode')
+			
+		#Check missing option keys
+		missingKeys = []
+		for key in optionKeys:
+			if key not in options:
+				missingKeys.append(key)
+			
+		if len(missingKeys) > 0:
+			default = {}
+			default['sleepTime'] = 300
+			default['stMultiplier'] = 6
+			default['internetStatusServers'] = ['173.194.69.103']
+			default['internetSpeedtestServers'] = ['auto', 'random']
+			default['countryCode'] = 'FI'
+				
+			for key in missingKeys:
+				options[key] = default[key]
+				
+		self._options = options
+		return
+	
+	def dbAddStatus(self):
 		try:
 			timeNow = int(time.time())
 			doNew = False
@@ -102,7 +128,7 @@ class NetworkStatusLogger():
 		speedtest = Speedtest()
 		count = 0
 		#servers = [ "173.194.69.103", "217.149.58.162" ]
-		servers = [ "192.168.10.1" ]
+		servers = self._options['internetStatusServers']
 		for url in servers:
 			try:
 				urllib2.urlopen("http://" + str(url),timeout=5)
@@ -122,33 +148,30 @@ class NetworkStatusLogger():
 	def getSpeeds(self, speedtest):
 		try:
 			results = {'ping':-1, 'download':-1, 'upload':-1, 'server':"-1"}
-			servers = ["auto", "random"]
+			#servers = ["auto", "random"]
+			servers = self._options['internetSpeedtestServers']
 			for url in servers:
 				if url == "auto":
 					speedtest.setNearestserver()
 				elif url == "random":
-					speedtest.setRandomServer("FI")
+					speedtest.setRandomServer(self._options['countryCode'])
 				else:
 					speedtest.setServer(host)
 				
 				results = self._getSpeed(speedtest)
-		except (urllib2.URLError, socket.error, socket.gaierror) as e:
+		#except (urllib2.URLError, socket.error, socket.gaierror, httplib.BadStatusLine) as e:
+		except (speedtest.SpeedtestError) as e:
 			self._logger.error('getSpeeds() exception: ' + str(e))
 		return results
 	
 	def _getSpeed(self, speedtest):
-		try:
 			results = {'ping':speedtest.ping(speedtest._host), 'download':speedtest.download(), 'upload':speedtest.upload(), 'server':speedtest._host}
-			#print results
 			return results
-		except (AttributeError, socket.gaierror) as e:
-			self._logger.error('_getSpeed() exception: ' + str(e))
-			return {'ping':-1, 'download':-1, 'upload':-1, 'server':"-1"}
 			
 
 	# Run method, test internet, test speed, write to local db, sleep
 	def run(self):
-		sleepTime = 30
+		sleepTime = self._options['sleepTime']
 		speedtest = Speedtest()
 		speedtestCounter = 0
 		
@@ -162,7 +185,7 @@ class NetworkStatusLogger():
 				else:
 					self._currentStatus = False
     		    
-				if speedtestCounter >= (1800/sleepTime):
+				if speedtestCounter >= (self._options['stMultiplier']):
 					speedtestCounter = 0
 					internetSpeed = self.getSpeeds(speedtest)
 					print internetSpeed

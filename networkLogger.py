@@ -8,7 +8,7 @@ import daemon
 import runner #local hacked up DaemonRunner
 import socket
 
-from speedtest import Speedtest
+from speedtest import Speedtest,SpeedtestError
 from random import choice
 
 try:
@@ -160,7 +160,7 @@ class NetworkStatusLogger():
 				
 				results = self._getSpeed(speedtest)
 		#except (urllib2.URLError, socket.error, socket.gaierror, httplib.BadStatusLine) as e:
-		except (speedtest.SpeedtestError) as e:
+		except (SpeedtestError) as e:
 			self._logger.error('getSpeeds() exception: ' + str(e))
 		return results
 	

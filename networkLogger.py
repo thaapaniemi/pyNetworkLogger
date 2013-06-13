@@ -4,12 +4,24 @@ import sys, time
 import logging
 import urllib2
 from ConfigParser import SafeConfigParser
-import daemon
-import runner #local hacked up DaemonRunner
+
 import socket
 
 from speedtest import Speedtest,SpeedtestError
 from random import choice
+
+#Get python-daemon version and load right module
+import daemon
+daemon_version = daemon._version.split(".")
+while len(daemon_version) < 5: daemon_version.append(str(0))
+daemon_version = int("".join(daemon_version))
+
+if daemon_version < 16000:
+	import runner155 #local hacked up DaemonRunner
+else:
+	print "python-daemon version 1.5.5 required"
+	import runner16 #local hacked up DaemonRunner
+
 
 try:
 	import pymysql as mysql
@@ -61,9 +73,9 @@ class NetworkStatusLogger():
 		
 		self._loadOptions(options)
 	
-	def _loadOptions(self, options={}):
+	def _loadOptions(self, options):
 		#Every option key
-		optionKeys = ('sleepTime', 'stMultiplier', 'internetStatusServers', 'internetSpeedtestServers', 'countryCode')
+		optionKeys = ('sleepTime', 'stMultiplier', 'internetStatusServers', 'internetSpeedtestServers', 'countryCode', 'databaseEnabled')
 			
 		#Check missing option keys
 		missingKeys = []
@@ -78,6 +90,7 @@ class NetworkStatusLogger():
 			default['internetStatusServers'] = ['173.194.69.103']
 			default['internetSpeedtestServers'] = ['auto', 'random']
 			default['countryCode'] = 'FI'
+			default['databaseEnabled'] = True
 				
 			for key in missingKeys:
 				options[key] = default[key]
@@ -86,6 +99,9 @@ class NetworkStatusLogger():
 		return
 	
 	def dbAddStatus(self):
+		if self._options['databaseEnabled'] == False:
+			return
+			
 		try:
 			timeNow = int(time.time())
 			doNew = False
@@ -110,6 +126,9 @@ class NetworkStatusLogger():
 
 	
 	def dbAddSpeed(self, internetSpeed):
+		if self._options['databaseEnabled'] == False:
+			return
+		
 		try:
 			print internetSpeed
 			dbSpeed = NetworkSpeed2()
@@ -127,14 +146,12 @@ class NetworkStatusLogger():
 	def internet_on(self):
 		speedtest = Speedtest()
 		count = 0
-		#servers = [ "173.194.69.103", "217.149.58.162" ]
 		servers = self._options['internetStatusServers']
 		for url in servers:
 			try:
 				urllib2.urlopen("http://" + str(url),timeout=5)
 				count += 1
 			except Exception as err:
-				#Suppose there is better way to do this than throw-catch exceptions?
 				pass
 		if count > (len(servers) / 2.0):
 			print "Internet ok"
@@ -228,6 +245,7 @@ if __name__ == "__main__":
 		parser.add_argument('-s', nargs=2, help="Set sleepTime and Speedtest multiplier")
 		parser.add_argument('-iss', nargs='+', help="Set InternetStatus server(s)")
 		parser.add_argument('-sts', nargs='+', help="Set Speedtest server(s)")
+		parser.add_argument('-nodb', nargs=1, help="Disable database []")
 		
 		args = parser.parse_args()
 		
@@ -240,6 +258,10 @@ if __name__ == "__main__":
 		
 		if args.sts is not None:
 			nlOptions['internetSpeedtestServers'] = args.sts
+		
+		if args.nodb is not None:
+			if args.nodb != "0" or args.nodb != "false":
+				nlOptions['databaseEnabled']= False
 			
 		
 		configParser = SafeConfigParser()
@@ -256,17 +278,19 @@ if __name__ == "__main__":
 			nlOptions['internetStatusServers'] = configParser.get('InternetStatus','Servers').split()
 		if 'internetSpeedtestServers' not in nlOptions:
 			nlOptions['internetSpeedtestServers'] = configParser.get('Speedtest','Servers').split()
+		if 'databaseEnabled' not in nlOptions:
+			nlOptions['databaseEnabled']= True
 		
 		#Add DB settings
 		
 		#print nlOptions
 
 		if args.d is None:
-			networkStatusLogger = NetworkStatusLogger()
+			networkStatusLogger = NetworkStatusLogger( options=nlOptions )
 			networkStatusLogger.run()
 		else:
 			logger = initLogger()
-			networkStatusLogger = NetworkStatusLogger( logger )
+			networkStatusLogger = NetworkStatusLogger( logger, nlOptions )
 			daemon_runner = runner.DaemonRunner(networkStatusLogger)
 			daemon_runner.parse_args([sys.argv[0], args.d[0]])
 			daemon_runner.do_action()

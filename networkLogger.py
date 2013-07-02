@@ -17,10 +17,10 @@ while len(daemon_version) < 5: daemon_version.append(str(0))
 daemon_version = int("".join(daemon_version))
 
 if daemon_version < 16000:
-	import runner155 #local hacked up DaemonRunner
+	import runner155 as runner #local hacked up DaemonRunner
 else:
 	print "python-daemon version 1.5.5 required"
-	import runner16 #local hacked up DaemonRunner
+	import runner16 as runner #local hacked up DaemonRunner
 
 
 try:
@@ -121,8 +121,9 @@ class NetworkStatusLogger():
 			
 			self._currentStatus = None
 		
-		except mysql.DatabaseError as e:
-			self._logger.error('dbAddStatus() exception: ' + str(e))
+		except (mysql.DatabaseError) as e:
+			pass
+			#self._logger.error('dbAddStatus() exception: ' + str(e))
 
 	
 	def dbAddSpeed(self, internetSpeed):
@@ -139,7 +140,8 @@ class NetworkStatusLogger():
 			dbSpeed.upload = internetSpeed['upload']
 			dbSpeed.save()
 		except mysql.DatabaseError as e:
-			self._logger.error('dbAddSpeed() exception: ' + str(e))
+			pass
+			#self._logger.error('dbAddSpeed() exception: ' + str(e))
 
 	# Determine if Internet connection is working by xxx servers loaded from config
 	# (DNS translation can take more time than timeout, that's why we are using IP address)
@@ -177,8 +179,9 @@ class NetworkStatusLogger():
 				
 				results = self._getSpeed(speedtest)
 		#except (urllib2.URLError, socket.error, socket.gaierror, httplib.BadStatusLine) as e:
-		except (SpeedtestError) as e:
-			self._logger.error('getSpeeds() exception: ' + str(e))
+		except (SpeedtestError, httplib.IncompleteRead) as e:
+			pass
+			#self._logger.error('getSpeeds() exception: ' + str(e))
 		return results
 	
 	def _getSpeed(self, speedtest):
@@ -217,7 +220,7 @@ class NetworkStatusLogger():
 			#TODO: add OperationalError
 			except ZeroDivisionError as e:
 				#print "NetworkLogger.run() exception catcher:" + str(e)
-				self._logger.error('Run() exception: ' + str(e))
+				#self._logger.error('Run() exception: ' + str(e))
 				time.sleep(120)
 	#/run_network_logging()
 

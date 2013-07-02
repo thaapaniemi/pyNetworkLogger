@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "./networkLogger.py", line 299, in <module>
+    daemon_runner.do_action()
+  File "/home/th/pyNetworkLogger/runner155.py", line 186, in do_action
+    func(self)
+  File "/home/th/pyNetworkLogger/runner155.py", line 131, in _start
+    self.app.run()
+  File "./networkLogger.py", line 210, in run
+    internetSpeed = self.getSpeeds(speedtest)
+  File "./networkLogger.py", line 174, in getSpeeds
+    speedtest.setNearestserver()
+  File "/home/th/pyNetworkLogger/speedtest.py", line 46, in setNearestserver
+    self._host = self._setNearestServer()
+  File "/home/th/pyNetworkLogger/speedtest.py", line 185, in _setNearestServer
+    reply = response.read()
+  File "/usr/lib/python2.7/httplib.py", line 541, in read
+    return self._read_chunked(amt)
+  File "/usr/lib/python2.7/httplib.py", line 590, in _read_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/usr/lib/python2.7/httplib.py", line 649, in _safe_read
+    raise IncompleteRead(''.join(s), amt)
+httplib.IncompleteRead: IncompleteRead(957 bytes read, 485 more expected)
+
+

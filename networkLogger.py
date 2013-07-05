@@ -3,6 +3,7 @@ import argparse
 import sys, time
 import logging
 import urllib2
+import httplib #For exceptions, should fix from speedtest class
 from ConfigParser import SafeConfigParser
 
 import socket

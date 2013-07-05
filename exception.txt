@@ -22,3 +22,51 @@ Traceback (most recent call last):
 httplib.IncompleteRead: IncompleteRead(957 bytes read, 485 more expected)
 
 
+#################
+
+Exception in thread Thread-2323:
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/threading.py", line 552, in __bootstrap_inner
+    self.run()
+  File "/usr/lib/python2.7/threading.py", line 505, in run
+    self.__target(*self.__args, **self.__kwargs)
+  File "/home/th/pyNetworkLogger/speedtest.py", line 234, in _downloadthread
+    response = connection.getresponse()
+  File "/usr/lib/python2.7/httplib.py", line 1034, in getresponse
+    response.begin()
+  File "/usr/lib/python2.7/httplib.py", line 407, in begin
+    version, status, reason = self._read_status()
+  File "/usr/lib/python2.7/httplib.py", line 371, in _read_status
+    raise BadStatusLine(line)
+BadStatusLine: ''
+
+Exception in thread Thread-2324:
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/threading.py", line 552, in __bootstrap_inner
+    self.run()
+  File "/usr/lib/python2.7/threading.py", line 505, in run
+    self.__target(*self.__args, **self.__kwargs)
+  File "/home/th/pyNetworkLogger/speedtest.py", line 234, in _downloadthread
+    response = connection.getresponse()
+  File "/usr/lib/python2.7/httplib.py", line 1034, in getresponse
+    response.begin()
+  File "/usr/lib/python2.7/httplib.py", line 407, in begin
+    version, status, reason = self._read_status()
+  File "/usr/lib/python2.7/httplib.py", line 371, in _read_status
+    raise BadStatusLine(line)
+BadStatusLine: ''
+
+Traceback (most recent call last):
+  File "./networkLogger.py", line 299, in <module>
+    daemon_runner.do_action()
+  File "/home/th/pyNetworkLogger/runner155.py", line 186, in do_action
+    func(self)
+  File "/home/th/pyNetworkLogger/runner155.py", line 131, in _start
+    self.app.run()
+  File "./networkLogger.py", line 210, in run
+    internetSpeed = self.getSpeeds(speedtest)
+  File "./networkLogger.py", line 182, in getSpeeds
+    except (SpeedtestError, httplib.IncompleteRead) as e:
+NameError: global name 'httplib' is not defined
+th@Pump19:~/pyNetworkLogger$ 
+

@@ -9,7 +9,3 @@ Can be run as standalone or as daemon (requires root).
 
 Requirements: python-daemon-1.5.5, peewee
 
-Todo: 
-* Better commandline-options.
-* Change to support or use python-daemon-1.6
-

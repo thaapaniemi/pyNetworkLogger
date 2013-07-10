@@ -20,7 +20,8 @@ if daemon_version < 16000:
 	import runner155 as runner #local hacked up DaemonRunner
 else:
 	print "python-daemon version 1.5.5 required"
-	import runner16 as runner #local hacked up DaemonRunner
+	#import runner16 as runner #local hacked up DaemonRunner
+	raise Exception("python-daemon version 1.5.5 required")
 
 
 try:

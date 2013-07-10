@@ -27,4 +27,6 @@ database = my_database
 username = database_user
 password = top_secret
 
+[sqlite]
+database = nlDB.db
 

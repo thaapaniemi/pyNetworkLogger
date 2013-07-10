@@ -7,7 +7,6 @@ import httplib #For exceptions, should fix from speedtest class
 from ConfigParser import SafeConfigParser
 
 import socket
-
 from speedtest import Speedtest,SpeedtestError
 from random import choice
 
@@ -32,9 +31,87 @@ except ImportError:
 	except ImportError:
 		mysql = None
 
-	
+import peewee
 from peewee import *
-mysql_database = MySQLDatabase('my_database', **{'passwd': 'top_secret', 'user': 'database_user'})
+mysql_database = None
+nlOptions = {}
+
+def logAndReThrowException(logger, e):
+	if logger:
+		logger.error('Uncatched exception: ' + str(e))
+
+	executionInfo = sys.exc_info()
+	raise executionInfo[1], None, executionInfo[2]
+
+
+#1 Main
+if __name__ == "__main__":
+	
+	logger = None
+	
+	nlOptions = {}
+	
+	try:
+		#Parser controls
+		parser = argparse.ArgumentParser("./networkLogger.py")
+		parser.add_argument('-c', nargs=1, help="Load alternative config file")
+		parser.add_argument('-d', nargs=1, help="Daemon controls [start|stop|restart]")
+		
+		parser.add_argument('-s', nargs=2, help="Set sleepTime and Speedtest multiplier")
+		parser.add_argument('-iss', nargs='+', help="Set InternetStatus server(s)")
+		parser.add_argument('-sts', nargs='+', help="Set Speedtest server(s)")
+		parser.add_argument('-nodb', nargs=1, help="Disable database []")
+		
+		args = parser.parse_args()
+		nlOptions['args'] = args # For #2 main
+		
+		
+		if args.s is not None:
+			nlOptions['sleepTime'] = args.s[0]
+			nlOptions['stMultiplier'] = args.s[1]
+			
+		if args.iss is not None:
+			nlOptions['internetStatusServers'] = args.iss
+		
+		if args.sts is not None:
+			nlOptions['internetSpeedtestServers'] = args.sts
+		
+		if args.nodb is not None:
+			if args.nodb != "0" or args.nodb != "false":
+				nlOptions['databaseEnabled']= False
+			
+		
+		configParser = SafeConfigParser()
+		configFile = 'config'
+		if args.c is not None:
+			configFile = args.c
+		
+		configParser.read(configFile)
+		if 'sleepTime' not in nlOptions:
+			nlOptions['sleepTime'] = int(configParser.get('Main','SleepTime'))
+		if 'stMultiplier' not in nlOptions:
+			nlOptions['stMultiplier'] = configParser.getint('Main','Multiplier')
+		if 'internetStatusServers' not in nlOptions:
+			nlOptions['internetStatusServers'] = configParser.get('InternetStatus','Servers').split()
+		if 'internetSpeedtestServers' not in nlOptions:
+			nlOptions['internetSpeedtestServers'] = configParser.get('Speedtest','Servers').split()
+		if 'databaseEnabled' not in nlOptions:
+			nlOptions['databaseEnabled']= True
+
+		configParser.read(configFile)
+
+		#DB settings
+		engine = configParser.get('Database','engine')
+		if engine == "mysql":
+			print "Using Mysql"
+			mysql_database = MySQLDatabase(configParser.get('mysql','database'), **{'passwd': configParser.get('mysql','password'), 'user':  configParser.get('mysql','username'), 'host':configParser.get('mysql','server')})
+		elif engine == "sqlite":
+			print "Using SQLite"
+			mysql_database = SqliteDatabase( configParser.get('sqlite','database') )
+		else:
+			raise Exception("DB not set.")
+	except Exception as e:
+		logAndReThrowException(logger, e)
 
 
 #ActiveRecord for NetworkStatus
@@ -180,7 +257,7 @@ class NetworkStatusLogger():
 				
 				results = self._getSpeed(speedtest)
 		#except (urllib2.URLError, socket.error, socket.gaierror, httplib.BadStatusLine) as e:
-		except (SpeedtestError, httplib.IncompleteRead) as e:
+		except (SpeedtestError, httplib.IncompleteRead, socket.gaierror) as e:
 			pass
 			#self._logger.error('getSpeeds() exception: ' + str(e))
 		return results
@@ -234,61 +311,10 @@ def initLogger():
 	logger.addHandler(handler)
 	return logger
 
+#2 Main
 if __name__ == "__main__":
-	executionInfo = None # This is for re-throwed exceptions with full traceback
-	logger = None
-	
-	nlOptions = {}
-	
 	try:
-		#Parser controls
-		parser = argparse.ArgumentParser("./networkLogger.py")
-		parser.add_argument('-c', nargs=1, help="Load alternative config file")
-		parser.add_argument('-d', nargs=1, help="Daemon controls [start|stop|restart]")
-		
-		parser.add_argument('-s', nargs=2, help="Set sleepTime and Speedtest multiplier")
-		parser.add_argument('-iss', nargs='+', help="Set InternetStatus server(s)")
-		parser.add_argument('-sts', nargs='+', help="Set Speedtest server(s)")
-		parser.add_argument('-nodb', nargs=1, help="Disable database []")
-		
-		args = parser.parse_args()
-		
-		if args.s is not None:
-			nlOptions['sleepTime'] = args.s[0]
-			nlOptions['stMultiplier'] = args.s[1]
-			
-		if args.iss is not None:
-			nlOptions['internetStatusServers'] = args.iss
-		
-		if args.sts is not None:
-			nlOptions['internetSpeedtestServers'] = args.sts
-		
-		if args.nodb is not None:
-			if args.nodb != "0" or args.nodb != "false":
-				nlOptions['databaseEnabled']= False
-			
-		
-		configParser = SafeConfigParser()
-		configFile = 'config'
-		if args.c is not None:
-			configFile = args.c
-		
-		configParser.read(configFile)
-		if 'sleepTime' not in nlOptions:
-			nlOptions['sleepTime'] = int(configParser.get('Main','SleepTime'))
-		if 'stMultiplier' not in nlOptions:
-			nlOptions['stMultiplier'] = configParser.getint('Main','Multiplier')
-		if 'internetStatusServers' not in nlOptions:
-			nlOptions['internetStatusServers'] = configParser.get('InternetStatus','Servers').split()
-		if 'internetSpeedtestServers' not in nlOptions:
-			nlOptions['internetSpeedtestServers'] = configParser.get('Speedtest','Servers').split()
-		if 'databaseEnabled' not in nlOptions:
-			nlOptions['databaseEnabled']= True
-		
-		#Add DB settings
-		
-		#print nlOptions
-
+		args = nlOptions['args']
 		if args.d is None:
 			networkStatusLogger = NetworkStatusLogger( options=nlOptions )
 			networkStatusLogger.run()
@@ -299,12 +325,6 @@ if __name__ == "__main__":
 			daemon_runner.parse_args([sys.argv[0], args.d[0]])
 			daemon_runner.do_action()
 	except Exception as e:
-		if logger:
-			logger.error('Uncatched exception: ' + str(e))
-		executionInfo = sys.exc_info()
+		logAndReThrowException(logger, e)
 	
-	#Re-throw exceptions with traceback data
-	if executionInfo:
-		raise executionInfo[1], None, executionInfo[2]
-
 	#eof

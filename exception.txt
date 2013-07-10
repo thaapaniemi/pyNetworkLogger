@@ -1,3 +1,29 @@
+Internet down
+
+Traceback (most recent call last):
+  File "./networkLogger.py", line 300, in <module>
+    daemon_runner.do_action()
+  File "/home/th/pyNetworkLogger/runner155.py", line 186, in do_action
+    func(self)
+  File "/home/th/pyNetworkLogger/runner155.py", line 131, in _start
+    self.app.run()
+  File "./networkLogger.py", line 211, in run
+    internetSpeed = self.getSpeeds(speedtest)
+  File "./networkLogger.py", line 175, in getSpeeds
+    speedtest.setNearestserver()
+  File "/home/th/pyNetworkLogger/speedtest.py", line 46, in setNearestserver
+    self._host = self._setNearestServer()
+  File "/home/th/pyNetworkLogger/speedtest.py", line 167, in _setNearestServer
+    connection.connect()
+  File "/usr/lib/python2.7/httplib.py", line 761, in connect
+    self.timeout, self.source_address)
+  File "/usr/lib/python2.7/socket.py", line 553, in create_connection
+    for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+socket.gaierror: [Errno -2] Name or service not known
+
+
+###########################
+
 Traceback (most recent call last):
   File "./networkLogger.py", line 299, in <module>
     daemon_runner.do_action()
